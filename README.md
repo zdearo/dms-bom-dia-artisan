@@ -1,282 +1,140 @@
-# Bom Dia, Artisan — Omarchy bar widget
+# Bom Dia, Artisan — widget para o DankMaterialShell
 
-The daily Laravel ecosystem digest from [bom-dia-artisan.dev](https://bom-dia-artisan.dev/),
-readable from the Omarchy bar.
+O resumo diário do ecossistema Laravel, de [bom-dia-artisan.dev](https://bom-dia-artisan.dev/),
+dentro da barra do DMS.
 
-> Unofficial. Not affiliated with bom-dia-artisan.dev; it reads the site's public
-> `/api/reports` once a day.
+Este é um port do [omarchy-bom-dia-artisan](https://github.com/mmonari/omarchy-bom-dia-artisan),
+de m0u (MIT), que foi escrito para o `omarchy-shell`. A lógica (busca, decisões, Markdown,
+filtros, marcas de lida) é a mesma; a interface e a I/O foram reescritas para a API de plugins
+do DMS.
 
-![The bar mark](docs/preview-bar.png)
+> Não oficial. Não é afiliado ao bom-dia-artisan.dev. Lê a API pública `/api/reports` uma vez por dia.
 
-![The panel](docs/preview-panel.png)
+- **Uma caneca na barra.** Ela fica quieta até sair uma edição nova. Aí aparece vapor e um ponto
+  vermelho. Com mais de uma edição não lida, o ponto mostra a contagem.
+- **A edição inteira no painel.** Resumo dos editores, a nota "lançado × só mesclado", e todos os
+  itens agrupados por pacote, com chip de status, repositório, a linha "por que importa" e a nota
+  completa sob demanda.
+- **Os últimos 16 dias** a uma seta de distância. Uma edição conta como lida depois de ficar na tela
+  por um instante.
+- **Uma verificação por dia**, às 09:30 por padrão. Se a edição ainda não saiu, pergunta de hora em
+  hora só se ela já saiu, e não baixa a lista inteira.
+- **Respeita a API.** Fica bem abaixo do limite de 10 requisições por minuto e espera o `Retry-After`
+  quando recebe `429`.
+- **Funciona sem rede.** A última resposta fica em cache, e o rodapé diz quando você está vendo a cópia salva.
 
-- **A mug in the bar.** It sits quiet until a new edition lands. Then steam rises off it and a
-  Laravel-red dot appears on the rim. When you have missed more than one edition, the dot shows
-  how many.
-- **The whole edition in the panel.** It shows the editors' summary, the "what is actually
-  released vs only merged" note, and every item grouped by package. Each item has a status chip
-  (Release, Merged, Dica), its repository, a one-line "why it matters", and the editors' full
-  note on demand. Notes keep their Markdown: paragraphs, headings, lists, code blocks and
-  links you can click.
-- **The last 16 days** are one arrow key away. An edition counts as read once it has been on
-  screen for a moment, not as you arrow past it.
-- **A toast for each new edition**, sent once. Clicking it opens the panel. It respects Do Not
-  Disturb.
-- **Checks once a day**, at 09:30 by default. It's a morning brief, not a ticker. Editions are
-  dated in São Paulo time, so outside Brazil "today's edition" means São Paulo's today, and the
-  plugin does not retry all day for one that isn't due yet.
-- **Polite to the API.** It stays far under the 10 requests per minute limit, and if the site
-  ever answers `429` it waits for the `Retry-After` it was given, clicks included. On a late
-  day, the hourly retries ask only "is today's edition out yet?" (~10 KB), not for the whole
-  history (~130 KB).
-- **Offline-friendly.** The last answer is cached, so the panel opens instantly and still works
-  without a network. The footer says when what you see is the saved copy.
+## Instalação
 
-**Contents:** [Install](#install) · [Keys](#keys) · [Settings](#settings) · [IPC](#ipc) ·
-[Where things live](#where-things-live) · [Developing](#developing)
-
-## Install
+Pré-requisitos: `curl`, `xdg-open` e o CLI `dms` (já vêm com o DMS e com o Omarchy).
 
 ```bash
-git clone https://github.com/mmonari/omarchy-bom-dia-artisan.git ~/Projects/Omarchy/Plugins/omarchy-bom-dia-artisan
-ln -s ~/Projects/Omarchy/Plugins/omarchy-bom-dia-artisan ~/.config/omarchy/plugins/m0u.artisan
-omarchy bar put m0u.artisan              # right section; add --after <id> to place it
-omarchy restart shell
+ln -s ~/Projects/Omarchy/Plugins/dms-bom-dia-artisan ~/.config/DankMaterialShell/plugins/bomDiaArtisan
 ```
 
-Needs `curl`, `xdg-open` and `notify-send`. All three come with Omarchy.
+Depois:
 
-## Keys
+1. Reinicie o DMS: `systemctl --user restart dms`.
+2. Em **Configurações → Plugins**, clique em **Scan for Plugins** e ative o *Bom Dia, Artisan*.
+3. Adicione o widget a uma seção da barra (**Configurações → DankBar → Widgets**). O id é `bomDiaArtisan`.
 
-| Key | Does |
-|-----|------|
-| `↑` `↓` / `j` `k` | Move between items |
-| `Space` | Read the item's full note (again to fold) |
-| `Enter` | Open the item's source (GitHub release / PR); with no item selected, the edition on the site |
-| `←` `→` / `h` `l` | Previous / next day |
-| `f` / `F`, `1`–`4` | Cycle / pick a filter (Tudo, Releases, Merged, Dicas) |
-| `n` | Jump to the next unread edition |
-| `o` | Open this edition on the site |
-| `m` | Mark every edition read |
-| `r` | Refresh |
-| `g` `G` / `Home` `End` | First / last item |
-| `Esc`, `Tab` | Close / move to the neighbouring bar panel |
+## Configurações
 
-Mouse: left-click the mug for the panel, middle-click to go straight to today's edition on the
-site. In the panel, click the title to open the edition on the site, ↻ beside it to fetch
-now, a row to read its note, and a row's ↗ to open the source.
+Em **Configurações → Plugins → Bom Dia, Artisan**:
 
-## Settings
+| Opção | Padrão | Significado |
+|-------|--------|-------------|
+| Verificar às | `09:30` | Horário local (HH:MM) da verificação diária. A data da edição segue o fuso de São Paulo. |
+| Aviso para cada nova edição | ligado | Um aviso por edição nova. Não abre o painel ao clicar: o `dms notify` não tem ação de clique. |
 
-Set these on the widget's entry in `~/.config/omarchy/shell.json`, or with
-`omarchy bar set m0u.artisan <key> <value>`:
+## Teclas (com o painel aberto)
 
-| Key | Default | Meaning |
-|-----|---------|---------|
-| `checkAt` | `"09:30"` | Local time of the one daily check (your clock; the *edition* date follows São Paulo). The edition is usually out by then. If it isn't, the plugin asks for just that edition hourly until it is out, then fetches the full list once and stays quiet until the next morning. If the machine was off or asleep at that time, the check runs as soon as it's back. Opening the panel never fetches; the ↻ button does. |
-| `notify` | `"on"` | `"off"` disables the toast. The bar dot still shows unread editions. |
+| Tecla | Faz |
+|-------|-----|
+| `↑` `↓` / `j` `k` | Move entre os itens |
+| `Espaço` | Lê a nota completa do item (de novo para recolher) |
+| `Enter` | Abre a fonte do item (release ou PR no GitHub); sem item selecionado, abre a edição no site |
+| `←` `→` / `h` `l` | Dia anterior / próximo |
+| `f` / `F`, `1`–`4` | Alterna / escolhe o filtro (Tudo, Releases, Merged, Dicas) |
+| `n` | Vai para a próxima edição não lida |
+| `o` | Abre esta edição no site |
+| `m` | Marca todas as edições como lidas |
+| `r` | Busca agora |
+| `g` `G` / `Home` `End` | Primeiro / último item |
+| `Esc` | Fecha o painel (o próprio DMS trata a tecla) |
 
-## IPC
+Com o mouse: clique na caneca para abrir o painel. Clique no título para abrir a edição no site, em ↻
+para buscar agora, numa linha para ler a nota e no ↗ para abrir a fonte.
 
-```bash
-qs -p /usr/share/omarchy/shell ipc call m0u.artisan open|close|toggle|refresh|markAllRead
-```
+## Onde ficam os dados
 
-`open`, `close` and `toggle` act on the monitor you are looking at.
+| O quê | Onde |
+|-------|------|
+| Marcas de lida e última edição avisada | `~/.local/state/bom-dia-artisan/state.json` |
+| Resposta da API em cache | `~/.cache/bom-dia-artisan/reports.json` |
+| Fonte dos dados | `https://bom-dia-artisan.dev/api/reports` (16 edições) |
+| Sondagem do fim do dia | `https://bom-dia-artisan.dev/api/reports/<AAAA-MM-DD>`, uma edição, `404` até sair. Nunca é cacheada |
+| Ativação do plugin | `~/.config/DankMaterialShell/plugin_settings.json` (chave `enabled`) |
 
-## Where things live
-
-| What | Where |
-|------|-------|
-| Read marks + last announced edition | `~/.local/state/m0u-artisan/state.json` |
-| Cached API response | `~/.cache/m0u-artisan/reports.json` |
-| Data source | `https://bom-dia-artisan.dev/api/reports`, the same 16 editions as `/feed.xml` with every section and item |
-| Late-day probe | `https://bom-dia-artisan.dev/api/reports/<YYYY-MM-DD>`, one edition, `404` until it is out. Never cached |
-
-Deleting `state.json` resets the plugin to a first run, where only the newest edition is unread.
+Apagar `state.json` faz o plugin tratar a próxima execução como a primeira: só a edição mais nova
+fica não lida.
 
 ---
 
-## Developing
+## Desenvolvimento
 
-Welcome. The plugin is about 2,100 lines of QML and plain JavaScript. It has no build step and no
-npm dependencies, and the git checkout *is* the live plugin, through the symlink from
-[Install](#install). You can be productive in it after reading this section.
+O plugin tem duas partes:
 
-### Stack
+- **Lógica em JavaScript puro** (`Model.js`, `Source.js`, `Actions.js`, `Glyphs.js`): sem QML e sem
+  I/O. Os testes em `test/` carregam os mesmos arquivos que o DMS carrega.
+- **Interface e I/O em QML**:
+  - `BomDiaDaemon.qml` é o único que busca, grava o cache, marca as lidas e avisa. Como é um daemon,
+    roda uma vez só, mesmo com a barra em vários monitores.
+  - `BomDiaWidget.qml` é a caneca na barra. `BomDiaPanel.qml` é o popout, com `ItemRow.qml`,
+    `StatusChip.qml`, `Mark.qml` e `BomDiaButton.qml`.
+  - `BomDiaSettings.qml` são as configurações.
 
-| Layer | Technology |
-|-------|------------|
-| Runtime | [Quickshell](https://quickshell.org/), the QML engine behind `omarchy-shell`. The plugin uses its `Process`, `FileView` and `IpcHandler` types |
-| UI | QML / Qt Quick, plus the shell's own `qs.Commons` (theme tokens) and `qs.Ui` (bar button, panel). Their source is in `/usr/share/omarchy/shell/` |
-| Logic | Plain ES5 JavaScript files (`.pragma library`), run by QML's JS engine |
-| Data | The site's JSON API, fetched with `curl` |
-| Desktop | `notify-send` for the toast, `xdg-open` for links |
-| Tests | The Node.js built-in runner (`node --test`), with no test framework |
-| Tooling | Python 3 for `tools/escape-glyphs.py`, and `omarchy plugin validate` |
+Daemon e interface se falam por `PluginService.setGlobalVar`:
 
-### First 10 minutes
+- o daemon publica a variável `view` (`{ summary, busy }`) sempre que muda algo;
+- a interface pede trabalho escrevendo `command` (`{ name, args, seq }`). O `seq` faz um pedido
+  repetido ser executado de novo.
+
+```
+manifest          plugin.json (id bomDiaArtisan, tipo composite)
+Model.js          todas as regras: normalização, filtros, cursor, marcas de lida, aviso, texto
+Source.js         transporte: argv do curl, leitura da resposta (429, 404 da sondagem), checkDue
+Actions.js        argv fixo para xdg-open e dms notify. Texto do feed nunca chega a um shell
+Glyphs.js         cores, ícones e rótulos dos status (escapes \u, nunca caracteres literais)
+test/             node --test, com a fixture de 4 edições de uma resposta real
+```
 
 ```bash
-# 1. Clone and link (see Install). Then check that your setup is healthy:
-npm test                        # the node tests + the glyph check, in under a second
-omarchy plugin validate .
-
-# 2. Watch the plugin's log while you work
-quickshell log --pid $(pgrep -f 'quickshell -n -p /usr/share/omarchy/shell') -t 2000
-
-# 3. Poke it without the mouse
-qs -p /usr/share/omarchy/shell ipc call m0u.artisan toggle
+npm test          # os testes do node e a checagem de glifos
 ```
 
-### Architecture
+Depois de mudar um `.qml`, reinicie o DMS (`systemctl --user restart dms`). Os `.js` são lidos de
+novo com o mesmo restart.
 
-![Architecture of the Bom Dia, Artisan widget](docs/architecture/architecture.svg)
+Para ver erros de QML: `journalctl --user -u dms -f`.
 
-The design rests on one split. **`BarWidget.qml` is the only file that does I/O.** Every
-decision is made in four pure JavaScript files that import nothing from QML. Because of that,
-`node --test` loads *the exact files the shell loads*, with no copy and no mock of Qt.
+### Não escreva glifos Nerd Font como caracteres literais
 
-One fetch, start to finish:
+Os ícones são códigos da área privada de uso (U+E000–U+F8FF). Um caractere literal pode virar vazio
+sem aviso. Escreva sempre como escape (`""`) em `.js` e `.qml`. `npm test` falha se houver um
+caractere literal em qualquer arquivo, e `tools/escape-glyphs.py` corrige os que aparecerem.
 
-1. A 60-second timer in `BarWidget.qml` asks `Source.checkDue()` whether the day's check is
-   due. A wall-clock check survives suspend, unlike a long QML `Timer`.
-2. If it is due, `Source.planCheck()` says what to ask for. The day's first check, a retry after
-   a failure and ↻ fetch the full list, `/api/reports`. A late day's hourly retries only *probe*
-   `/api/reports/<today>`: a `404` means "not out yet" and is not an error, and a `200` makes
-   the widget fetch the list right away. Only a list is ever cached.
-3. `BarWidget.qml` runs the argv from `Source.request()` (a `curl` command) and
-   hands the output to `Source.parse()`. curl runs without `--fail` and appends the HTTP status
-   and `Retry-After` as a trailer line, so a `429` can be told apart from other errors.
-4. `Model.normalize()` turns the API response into editions. The widget writes the raw response
-   to `reports.json`.
-5. `Model.notifyCandidate()` decides whether to toast. If yes, the widget saves `state.json`
-   *first*, then runs `Actions.notifyArgv()`.
-6. `Model.summarize()` produces the `summary` object. `Mark.qml` draws the mug from it, and
-   `Panel.qml` / `ItemRow.qml` draw the edition.
+---
 
-**One widget per monitor.** The shell builds one instance per output. Only the *leader*, the
-first entry in `bar.moduleWidgets()`, fetches and notifies. Every instance watches both files
-with `FileView` and re-renders when they change. That is how a read mark set on one monitor
-shows up on the other.
+## Diferenças em relação ao original (omarchy)
 
-The diagram source is
-[`docs/architecture/architecture.architecture.json`](docs/architecture/architecture.architecture.json).
-[`architecture.html`](docs/architecture/architecture.html) is the interactive version, with a
-theme toggle and PNG export. Both are made with [Archify](https://github.com/tt-a1i/archify):
+| Original (omarchy-shell) | Este port (DMS) |
+|--------------------------|-----------------|
+| O toast abre o painel ao clicar | O toast só avisa (`dms notify` não tem ação de clique) |
+| Clique do meio abre a edição de hoje no site | Não portado: o `PluginComponent` expõe só clique esquerdo e direito |
+| Comandos IPC (`open`, `close`, `toggle`, `refresh`, `markAllRead`) | Removidos. Os pedidos internos passam por `setGlobalVar`. |
+| Um widget por monitor, com eleição de líder | Um daemon só, sem eleição |
+| Configuração em `shell.json` | Configuração pela interface do DMS |
 
-```bash
-node <archify>/bin/archify.mjs render architecture \
-  docs/architecture/architecture.architecture.json docs/architecture/architecture.html
-# then open the HTML, Export ▸ SVG, and save it over docs/architecture/architecture.svg
-```
+## Licença
 
-### Repository map
-
-```
-manifest.json          Plugin manifest: id, entry point, the two settings and their defaults
-BarWidget.qml          The widget root. All I/O: curl, the two files, notify-send, xdg-open, IPC
-Panel.qml              The popout. Keyboard handling and view state (day, filter, cursor)
-ItemRow.qml            One news item: chip, repo, headline, expandable note
-StatusChip.qml         The Release / Merged / Dica chip
-Mark.qml               The mug in the bar: steam + dot when unread
-
-Model.js               Every rule: normalizing, filters, cursor moves, read marks, notify, wording,
-                       and the Markdown-to-StyledText converter for the editors' notes
-Source.js              Transport: the curl argv (list or probe), response parsing (HTTP status,
-                       429, probe 404), checkDue, planCheck, and the São Paulo edition date
-Actions.js             Fixed argv for xdg-open and the toast. Feed text never reaches a shell
-Theme.js               Status colours, glyphs and labels, written as \u escapes
-
-test/harness.mjs       Loads the .js files above into node, stripping only .pragma/.import
-test/*.test.mjs        The tests (model, source; actions and theme live in source.test.mjs)
-test/fixtures/         reports.json: 4 editions from a real /api/reports response (2026-10-08)
-tools/escape-glyphs.py Rewrites literal Nerd Font glyphs as escapes in every .js/.mjs/.qml
-                       (test/fixtures/ excepted). --check fails on any
-assets/                logo.png, the toast icon
-docs/architecture/     The diagram: JSON source, interactive HTML, SVG for this README
-docs/preview-*.png     The screenshots at the top of this README
-docs/changelogs/       One file per day of finished work
-docs/lessons-learned/  Gotchas worth remembering, one file per theme (committed in this repo)
-CLAUDE.md              The rules that are easy to break, written for AI agents and humans alike
-```
-
-### Where to make a change
-
-| You want to… | Edit | Then |
-|--------------|------|------|
-| Change what counts as unread, a filter, cursor behaviour, a label | `Model.js` | add a test in `test/model.test.mjs` |
-| Change when or how it fetches | `Source.js` | add a test in `test/source.test.mjs` |
-| Change a status colour or icon | `Theme.js` | run `tools/escape-glyphs.py` |
-| Change the panel layout or a key binding | `Panel.qml` / `ItemRow.qml` | `omarchy restart shell` |
-| Change the bar icon | `Mark.qml` | `omarchy restart shell` |
-| Add a setting | `manifest.json` (defaults + schema), read it in `BarWidget.qml` via `root.setting()` | validate, restart |
-| Add an IPC verb | the `IpcHandler` in `BarWidget.qml` | restart |
-
-If a rule could live in either a `.qml` or a `.js` file, put it in the `.js` file, where a test
-can reach it.
-
-### The dev loop
-
-| You changed | To see it |
-|-------------|-----------|
-| A `.js` file | `npm test`. The shell needs `omarchy restart shell` too |
-| A `.qml` file | `omarchy restart shell`. Saving does **not** reload a bar widget |
-| `shell.json` settings | Nothing. Settings hot-reload |
-| `state.json` by hand | Nothing. The file watch picks it up |
-
-Run `npm test` before every commit.
-
-### Rules that are easy to break
-
-The full list, with the reasons, is in [`CLAUDE.md`](CLAUDE.md). The short version:
-
-- **Only `BarWidget.qml` does I/O.** Keep the `.js` files free of QML imports, or node can't
-  load them.
-- **Write Nerd Font glyphs as `\uXXXX` escapes**, with surrogate pairs above U+FFFF. A literal
-  private-use character renders as nothing. Editors and heredocs often turn escapes back into
-  literals, so run `tools/escape-glyphs.py` after editing. `npm test` fails on a literal glyph
-  in any `.js`, `.mjs` or `.qml` file, tests included (only `test/fixtures/` is skipped).
-- **Only the leader fetches, writes the cache and notifies.** Never add a second writer.
-- **IPC lands on whichever instance registered first.** An IPC method that touches a panel
-  must go through `runOnFocused`.
-- **`opened`, `open()`, `close()` and `popoutSwitchClosing` on the widget root are a contract.**
-  If any is missing, the bar silently skips the widget for Tab and SUPER+CTRL+`<n>`.
-- **QML's `Array.sort` is not stable** (Node's is, so tests can't catch it). To reorder by a
-  boolean, use `filter` + `concat`.
-- **Row hover uses `onPositionChanged`, never `onEntered`**, so a list scrolling under a
-  resting pointer doesn't steal the keyboard cursor.
-- **Nothing grows or appears on selection.** Otherwise the list jumps on every arrow key.
-
-### Testing
-
-`test/harness.mjs` reads each `.js` file, blanks its `.pragma` / `.import` lines (keeping line
-numbers intact), and evaluates it in node's own realm. That realm choice matters:
-`assert.deepEqual` would otherwise fail on cross-realm arrays. Tests run against
-`test/fixtures/reports.json`, four editions (31 items) from a real API response, trimmed so the
-repo does not republish the site's archive. It includes an older edition with no `status`
-field, which `Model.inferStatus` handles. If you replace the fixture, update the tests that pin
-those counts in the same commit.
-
-### Verifying UI changes
-
-- `wtype` can't drive the panel: its key events never reach the layer-shell surface. Instead,
-  add a temporary IPC method that finds the *opened* panel and calls its own functions
-  (`moveCursor`, `activate`, `stepEdition`, `setFilter`, `cursorToEnd`). Remove the method
-  before committing.
-- Screenshot the focused monitor with `grim -o <output>`.
-- To make editions unread again, remove dates from `read` in
-  `~/.local/state/m0u-artisan/state.json`. To get a toast as well, also clear `notified`. The
-  toast only ever announces the newest edition, and only if it is less than 36 hours old.
-- No toast? Check Do Not Disturb:
-  `qs -p /usr/share/omarchy/shell ipc call notifications isDnd`.
-
-### Conventions
-
-- Commit to `main`. This is a solo repo.
-- Write up finished work in `docs/changelogs/YYYY-MM-DD.md`, appending to the day's file.
-- Record a non-obvious gotcha in `docs/lessons-learned/<theme>.md`, newest entry first.
-
-## License
-
-[MIT](LICENSE)
+[MIT](LICENSE). Copyright do original: m0u. Copyright do port: Adryel Dearo.

@@ -2,9 +2,9 @@
 
 // Everything this plugin decides, as pure functions. No QML, no I/O.
 //
-// BarWidget.qml fetches, Panel.qml draws, and every rule in between lives here,
-// so that `node --test` runs the exact file the shell loads. If a rule is worth
-// getting right, it does not live in a .qml file.
+// BomDiaDaemon.qml fetches, BomDiaPanel.qml draws, and every rule in between
+// lives here, so that `node --test` runs the exact file the shell loads. If a
+// rule is worth getting right, it does not live in a .qml file.
 
 var SITE = "https://bom-dia-artisan.dev";
 

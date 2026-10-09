@@ -1,8 +1,7 @@
 import QtQuick
-import qs.Commons
-import qs.Ui
+import qs.Common
+import "Glyphs.js" as Glyphs
 import "Model.js" as Model
-import "Theme.js" as Theme
 
 // One piece of news: status chip and repository, the headline, a one-line
 // "why it matters", and — expanded — the editors' full note.
@@ -19,19 +18,18 @@ Item {
   property var item: null
   property string cursorKey: ""
   property bool expanded: false
-  property color foreground: Color.foreground
-  property string fontFamily: Style.font.family
-  property color codeColor: Color.accent
-  // The panel's PointerMoveGate. Hover takes the cursor only on REAL pointer
-  // movement: when the list scrolls under a resting pointer (End, an arrow
-  // key revealing a row), the row that slides beneath it must not steal the
-  // keyboard's selection. Without it, End followed by Space expanded the row
-  // the mouse happened to be resting on.
+  property color foreground: Theme.surfaceText
+  property string fontFamily: Theme.defaultFontFamily
+  property color codeColor: Theme.primary
+  // The panel's pointer gate. Hover takes the cursor only on REAL pointer
+  // movement: when the list scrolls under a resting pointer (End, an arrow key
+  // revealing a row), the row that slides beneath it must not steal the
+  // keyboard's selection.
   property var pointerGate: null
 
   readonly property bool hasCursor: root.item !== null && root.cursorKey === root.item.key
   readonly property bool hasDetails: root.item !== null && root.item.details !== ""
-  readonly property real pad: Style.space(8)
+  readonly property real pad: Theme.spacingS
 
   signal cursorRequested(string key)
   signal toggleRequested()
@@ -46,15 +44,14 @@ Item {
   onHasCursorChanged: if (root.hasCursor) root.revealRequested(root)
   // Expanding near the bottom grows the row below the fold; follow it. On the
   // height change, not on `expanded`: when `expanded` flips the row has not
-  // been laid out at its new height yet, so revealing then scrolls to where
-  // the row USED to end and leaves the note just under the fold.
+  // been laid out at its new height yet.
   onHeightChanged: if (root.expanded && root.hasCursor) root.revealRequested(root)
 
-  CursorSurface {
+  // The cursor's highlight. Drawn from the cursor, not from the hover.
+  Rectangle {
     anchors.fill: parent
-    hasCursor: root.hasCursor
-    current: root.expanded
-    foreground: root.foreground
+    radius: Theme.cornerRadius
+    color: root.hasCursor ? Theme.withAlpha(Theme.primary, root.expanded ? 0.14 : 0.08) : "transparent"
   }
 
   function pointerMoved(area, mouse) {
@@ -77,7 +74,7 @@ Item {
     x: root.pad
     y: root.pad
     width: root.width - root.pad * 2
-    spacing: Style.space(4)
+    spacing: Theme.spacingXS
 
     // -- chip · source ............................................ [link] --
     Item {
@@ -89,22 +86,21 @@ Item {
         anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
         status: root.item ? root.item.status : "note"
-        fontFamily: root.fontFamily
       }
 
       Text {
         anchors.left: chip.right
-        anchors.leftMargin: Style.space(6)
+        anchors.leftMargin: Theme.spacingXS
         anchors.right: link.left
-        anchors.rightMargin: Style.space(6)
+        anchors.rightMargin: Theme.spacingXS
         anchors.verticalCenter: parent.verticalCenter
         text: root.item ? root.item.source : ""
         textFormat: Text.PlainText
         elide: Text.ElideRight
         color: root.foreground
         opacity: 0.5
-        font.family: "monospace"
-        font.pixelSize: Style.font.caption
+        font.family: Theme.defaultMonoFontFamily
+        font.pixelSize: Theme.fontSizeSmall
       }
 
       // The way out. Its own hit target, above the row's, so opening a link
@@ -114,19 +110,19 @@ Item {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         visible: root.item !== null && root.item.url !== ""
-        text: Theme.icon("external")
+        text: Glyphs.icon("external")
         textFormat: Text.PlainText
         color: root.foreground
         opacity: linkMouse.containsMouse ? 1.0 : (root.hasCursor ? 0.7 : 0.35)
         font.family: root.fontFamily
-        font.pixelSize: Style.font.bodySmall
+        font.pixelSize: Theme.fontSizeSmall
 
         Behavior on opacity { NumberAnimation { duration: 100 } }
 
         MouseArea {
           id: linkMouse
           anchors.fill: parent
-          anchors.margins: -Style.space(6)
+          anchors.margins: -Theme.spacingXS
           hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
           onPositionChanged: function (mouse) { root.pointerMoved(linkMouse, mouse); }
@@ -142,7 +138,7 @@ Item {
       wrapMode: Text.Wrap
       color: root.foreground
       font.family: root.fontFamily
-      font.pixelSize: Style.font.body
+      font.pixelSize: Theme.fontSizeMedium
       font.bold: true
       lineHeight: 1.1
     }
@@ -158,7 +154,7 @@ Item {
       color: root.foreground
       opacity: 0.7
       font.family: root.fontFamily
-      font.pixelSize: Style.font.bodySmall
+      font.pixelSize: Theme.fontSizeSmall
       lineHeight: 1.15
     }
 
@@ -166,25 +162,25 @@ Item {
     // colour ties it to the chip above it.
     Item {
       width: parent.width
-      height: root.expanded ? note.implicitHeight + Style.space(6) : 0
+      height: root.expanded ? note.implicitHeight + Theme.spacingXS : 0
       visible: root.expanded && root.hasDetails
       clip: true
 
       Rectangle {
         x: 0
-        y: Style.space(4)
-        width: Style.space(2)
+        y: Theme.spacingXS
+        width: 2
         height: note.implicitHeight
         radius: width / 2
-        color: Theme.colorFor(root.item ? root.item.status : "note")
+        color: Glyphs.colorFor(root.item ? root.item.status : "note")
         opacity: 0.8
       }
 
       Text {
         id: note
-        x: Style.space(10)
-        y: Style.space(4)
-        width: parent.width - Style.space(10)
+        x: Theme.spacingM
+        y: Theme.spacingXS
+        width: parent.width - Theme.spacingM
         text: root.item ? Model.markdown(root.item.details, root.codeColor) : ""
         textFormat: Text.StyledText
         linkColor: root.codeColor
@@ -195,7 +191,7 @@ Item {
         color: root.foreground
         opacity: 0.88
         font.family: root.fontFamily
-        font.pixelSize: Style.font.bodySmall
+        font.pixelSize: Theme.fontSizeSmall
         lineHeight: 1.25
       }
     }

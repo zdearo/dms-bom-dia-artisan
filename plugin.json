@@ -1,0 +1,21 @@
+{
+    "id": "bomDiaArtisan",
+    "name": "Bom Dia, Artisan",
+    "description": "O resumo diário do ecossistema Laravel (bom-dia-artisan.dev) na barra: uma caneca que sinaliza edições novas e um painel para ler tudo.",
+    "version": "0.1.0",
+    "author": "Adryel Dearo (port do Bom Dia, Artisan de m0u para o DMS)",
+    "type": "composite",
+    "capabilities": ["daemon", "dankbar-widget"],
+    "icon": "coffee",
+    "components": {
+        "daemon": "./BomDiaDaemon.qml",
+        "widget": "./BomDiaWidget.qml"
+    },
+    "settings": "./BomDiaSettings.qml",
+    "requires_dms": ">=1.6.0",
+    "requires": ["curl", "xdg-open", "dms"],
+    "permissions": [
+        "settings_read",
+        "settings_write"
+    ]
+}

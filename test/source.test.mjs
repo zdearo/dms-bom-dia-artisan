@@ -10,7 +10,7 @@ import { load } from "./harness.mjs";
 
 const S = load("Source.js");
 const A = load("Actions.js");
-const T = load("Theme.js");
+const T = load("Glyphs.js");
 const ROOT = new URL("..", import.meta.url).pathname;
 
 test("request is a fixed argv against the JSON API, with its own timeout", () => {
@@ -177,12 +177,14 @@ test("openUrlArgv only passes http(s) URLs", () => {
   assert.deepEqual(A.openUrlArgv(undefined), []);
 });
 
-test("notifyArgv keeps feed text out of the script", () => {
+test("notifyArgv is dms notify, with feed text as plain arguments", () => {
   const argv = A.notifyArgv('Edição $(rm -rf ~)', "body `id`", "/x/logo.png");
-  assert.equal(argv[0], "bash");
-  assert.equal(argv[2], A.NOTIFY_SCRIPT);
-  assert.ok(!A.NOTIFY_SCRIPT.includes("rm -rf"));
-  assert.equal(argv[6], 'Edição $(rm -rf ~)');
+  assert.equal(argv[0], "dms");
+  assert.equal(argv[1], "notify");
+  assert.ok(!argv.includes("bash") && !argv.includes("sh"));
+  assert.equal(argv.at(-2), 'Edição $(rm -rf ~)');
+  assert.equal(argv.at(-1), "body `id`");
+  assert.ok(argv.includes("--"));
   assert.deepEqual(A.notifyArgv("", "b", "i"), []);
 });
 

@@ -1,6 +1,6 @@
 import QtQuick
-import qs.Commons
-import "Theme.js" as Theme
+import qs.Common
+import "Glyphs.js" as Glyphs
 
 // The bar mark: the Bom Dia, Artisan mug, in the bar foreground.
 //
@@ -16,8 +16,8 @@ Item {
   // "loading" | "offline" | "unread" | "read"
   property string level: "read"
   property int unreadCount: 0
-  property color foreground: Color.foreground
-  property real glyphSize: Style.font.caption
+  property color foreground: Theme.widgetTextColor
+  property real glyphSize: Theme.fontSizeMedium
   property bool stale: false
   property bool busy: false
   // The panel header reuses the mark at title size, where steam would be
@@ -35,9 +35,9 @@ Item {
   Text {
     id: mug
     anchors.centerIn: parent
-    text: Theme.icon("mug")
+    text: Glyphs.icon("mug")
     textFormat: Text.PlainText
-    font.family: Style.font.family
+    font.family: Theme.defaultFontFamily
     font.pixelSize: root.glyphSize
     color: root.foreground
     // Offline or never loaded: dimmed, not hidden. The last edition is still
@@ -90,7 +90,7 @@ Item {
     height: counted ? Math.max(9, root.glyphSize * 0.68) : Math.max(6, root.glyphSize * 0.42)
     width: counted ? Math.max(height, countText.implicitWidth + height * 0.5) : height
     radius: height / 2
-    color: Theme.BRAND
+    color: Glyphs.BRAND
     anchors.right: mug.right
     anchors.top: mug.top
     anchors.rightMargin: -width * 0.35
@@ -98,7 +98,7 @@ Item {
     // A hairline in the bar background keeps the dot off the glyph at any
     // theme contrast.
     border.width: 1
-    border.color: Color.background
+    border.color: Theme.background
 
     Text {
       id: countText
@@ -107,7 +107,7 @@ Item {
       text: root.unreadCount > 9 ? "9+" : String(root.unreadCount)
       textFormat: Text.PlainText
       color: "white"
-      font.family: Style.font.family
+      font.family: Theme.defaultFontFamily
       font.pixelSize: Math.max(7, dot.height * 0.72)
       font.bold: true
     }
